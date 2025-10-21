@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, hypotheses, InsertHypothesis, feedback, InsertFeedback, discussions, InsertDiscussion } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -85,4 +85,103 @@ export async function getUser(id: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * 仮説関連のクエリ
+ */
+export async function createHypothesis(data: InsertHypothesis) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(hypotheses).values(data);
+  return result;
+}
+
+export async function getHypothesisById(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db
+    .select()
+    .from(hypotheses)
+    .where(eq(hypotheses.id, id))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getHypothesesByUser(userId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db
+    .select()
+    .from(hypotheses)
+    .where(eq(hypotheses.userId, userId))
+    .orderBy(hypotheses.createdAt);
+}
+
+export async function getAllHypotheses() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db
+    .select()
+    .from(hypotheses)
+    .orderBy(hypotheses.createdAt);
+}
+
+/**
+ * フィードバック関連のクエリ
+ */
+export async function createFeedback(data: InsertFeedback) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.insert(feedback).values(data);
+}
+
+export async function getFeedbackByHypothesis(hypothesisId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db
+    .select()
+    .from(feedback)
+    .where(eq(feedback.hypothesisId, hypothesisId))
+    .orderBy(feedback.createdAt);
+}
+
+/**
+ * ディスカッション関連のクエリ
+ */
+export async function createDiscussion(data: InsertDiscussion) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db.insert(discussions).values(data);
+}
+
+export async function getDiscussionsByHypothesis(hypothesisId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return await db
+    .select()
+    .from(discussions)
+    .where(eq(discussions.hypothesisId, hypothesisId))
+    .orderBy(discussions.createdAt);
+}
+
+export async function getHypothesisWithFeedbackAndDiscussions(hypothesisId: string) {
+  const hypothesis = await getHypothesisById(hypothesisId);
+  if (!hypothesis) return null;
+  
+  const feedbackList = await getFeedbackByHypothesis(hypothesisId);
+  const discussionList = await getDiscussionsByHypothesis(hypothesisId);
+  
+  return {
+    ...hypothesis,
+    feedback: feedbackList,
+    discussions: discussionList,
+  };
+}
