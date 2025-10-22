@@ -5,11 +5,13 @@ import { trpc } from "@/lib/trpc";
 import { Loader2, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import KeywordDialog from "@/components/KeywordDialog";
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showKeywordDialog, setShowKeywordDialog] = useState(false);
 
   // 認証チェック
   if (!isAuthenticated) {
@@ -32,9 +34,13 @@ export default function Dashboard() {
     },
   });
 
-  const handleGenerateHypothesis = async () => {
+  const handleGenerateHypothesis = async (keywords: [string, string, string]) => {
     setIsGenerating(true);
-    await generateMutation.mutateAsync();
+    try {
+      await generateMutation.mutateAsync({ keywords });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -51,7 +57,7 @@ export default function Dashboard() {
             </div>
             <Button
               size="lg"
-              onClick={handleGenerateHypothesis}
+              onClick={() => setShowKeywordDialog(true)}
               disabled={isGenerating}
               className="gap-2"
             >
@@ -182,7 +188,7 @@ export default function Dashboard() {
                   最初の仮説を生成しましょう。
                 </p>
                 <Button
-                  onClick={handleGenerateHypothesis}
+                  onClick={() => setShowKeywordDialog(true)}
                   disabled={isGenerating}
                 >
                   {isGenerating ? "生成中..." : "仮説を生成"}
@@ -192,6 +198,14 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* キーワードダイアログ */}
+      <KeywordDialog
+        open={showKeywordDialog}
+        onOpenChange={setShowKeywordDialog}
+        onSubmit={handleGenerateHypothesis}
+        isLoading={isGenerating}
+      />
     </div>
   );
 }

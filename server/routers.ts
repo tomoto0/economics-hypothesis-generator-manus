@@ -64,31 +64,39 @@ export const appRouter = router({
    * 仮説生成・管理ルーター
    */
   hypothesis: router({
-    /**
-     * 新しい仮説を生成（AI駆動）
-     */
-    generate: protectedProcedure.mutation(async ({ ctx }) => {
+  /**
+   * 新しい仮説を生成（AI駆動）
+   */
+  generate: publicProcedure
+    .input(
+      z.object({
+        keywords: z.array(z.string()).length(3),
+      })
+    )
+    .mutation(async ({ input }) => {
       try {
-        // LLMに仮説生成プロンプトを送信
-        const prompt = `
-あなたは経済学の研究者です。最新の経済動向、技術革新、社会変化を反映した革新的で実現可能な経済学の研究仮説を1つ生成してください。
+        // キーワードを使用して仮説生成プロンプトを作成
+        const keywordString = input.keywords.join(", ");
+        const prompt = `You are an expert economist. Based on the following keywords, generate one innovative and feasible economic research hypothesis that reflects the latest economic trends, technological innovations, and social changes.
 
-以下のJSON形式で出力してください：
+Keywords: ${keywordString}
+
+Generate an innovative economic research hypothesis that combines these keywords.
+
+Output ONLY a valid JSON object (no additional text before or after) with the following structure:
 {
-  "title": "仮説のタイトル",
-  "description": "詳細な説明（200-300文字）",
-  "category": "カテゴリ（金融政策、マクロ経済学、国際経済学、労働経済学、環境経済学、デジタル経済学、金融市場、エネルギー経済学のいずれか）",
-  "confidence": 70-95の整数,
-  "researchMethods": ["研究手法1", "研究手法2", "研究手法3"],
-  "keyFactors": ["重要要因1", "重要要因2", "重要要因3"],
-  "dataSourcesUsed": ["データソース1", "データソース2"],
-  "policyImplications": ["政策含意1", "政策含意2"],
-  "noveltyScore": 70-95の整数,
-  "feasibilityScore": 65-95の整数,
-  "expectedImpact": "期待される影響の説明"
+  "title": "Hypothesis title in Japanese",
+  "description": "Detailed explanation in Japanese (200-300 characters)",
+  "category": "One of: Monetary Policy, Macroeconomics, International Economics, Labor Economics, Environmental Economics, Digital Economics, Financial Markets, Energy Economics",
+  "confidence": integer between 70 and 95,
+  "researchMethods": ["method1", "method2", "method3"],
+  "keyFactors": ["factor1", "factor2", "factor3"],
+  "dataSourcesUsed": ["source1", "source2"],
+  "policyImplications": ["implication1", "implication2"],
+  "noveltyScore": integer between 70 and 95,
+  "feasibilityScore": integer between 65 and 95,
+  "expectedImpact": "Description of expected impact in Japanese"
 }
-
-JSONのみを出力してください。
         `;
 
         const response = await invokeLLM({
@@ -108,35 +116,39 @@ JSONのみを出力してください。
         // レスポンスからJSONを抽出
         const messageContent = response.choices[0].message.content;
         const content = typeof messageContent === 'string' ? messageContent : '';
-        let hypothesisData = JSON.parse(content);
+        
+        // JSONを抽出（マークダウンコードブロックやその他のテキストを削除）
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('Failed to extract JSON from response');
+        }
+        
+        let hypothesisData = JSON.parse(jsonMatch[0]);
 
         // 仮説データの検証
         const validated = HypothesisSchema.parse(hypothesisData);
 
         // AI分析コメントを生成
-        const analysisPrompt = `
-以下の経済学仮説について、専門的な観点から分析コメントを生成してください：
+        const analysisPrompt = `Provide a professional critical analysis of the following economic research hypothesis in Japanese:
 
-タイトル: ${validated.title}
-説明: ${validated.description}
-カテゴリ: ${validated.category}
+Title: ${validated.title}
+Description: ${validated.description}
+Category: ${validated.category}
 
-以下の視点から分析してください：
-1. 理論的妥当性
-2. 実証研究の可能性
-3. 政策的含意
-4. 既存研究との関連性
-5. 改善提案
+Analyze from the following perspectives:
+1. Theoretical validity
+2. Feasibility of empirical research
+3. Policy implications
+4. Relationship to existing research
+5. Suggestions for improvement
 
-簡潔で専門的なコメントを生成してください。
-        `;
+Provide a concise and professional comment in Japanese.`;
 
         const analysisResponse = await invokeLLM({
           messages: [
             {
               role: "system",
-              content:
-                "You are an expert economist providing critical analysis of research hypotheses.",
+              content: "You are an expert economist providing critical analysis of research hypotheses. Respond in Japanese.",
             },
             {
               role: "user",
@@ -146,7 +158,7 @@ JSONのみを出力してください。
         });
 
         const analysisContent = analysisResponse.choices[0].message.content;
-        const aiComment = typeof analysisContent === 'string' ? analysisContent : '';
+        const aiComment = typeof analysisContent === 'string' ? analysisContent : 'Analysis not available';
 
         // データベースに保存
         const hypothesisId = uuidv4();
@@ -154,20 +166,21 @@ JSONのみを出力してください。
           id: hypothesisId,
           ...validated,
           aiComment,
-          userId: ctx.user.id,
+          userId: "anonymous",
         });
 
         return {
           id: hypothesisId,
           ...validated,
           aiComment: aiComment || '',
-          userId: ctx.user.id,
+          userId: "anonymous",
           createdAt: new Date(),
           generatedAt: new Date(),
         };
       } catch (error) {
-        console.error("Hypothesis generation error:", error);
-        throw new Error("Failed to generate hypothesis");
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Hypothesis generation error:", errorMessage);
+        throw new Error(`Failed to generate hypothesis: ${errorMessage}`);
       }
     }),
 
@@ -181,10 +194,10 @@ JSONのみを出力してください。
       }),
 
     /**
-     * ユーザーの仮説一覧を取得
+     * すべての仮説を取得
      */
-    listByUser: protectedProcedure.query(async ({ ctx }) => {
-      return await getHypothesesByUser(ctx.user.id);
+    listByUser: publicProcedure.query(async () => {
+      return await getAllHypotheses();
     }),
 
     /**
@@ -211,14 +224,14 @@ JSONのみを出力してください。
     /**
      * フィードバックを投稿
      */
-    create: protectedProcedure
+    create: publicProcedure
       .input(FeedbackSchema)
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ input }) => {
         const feedbackId = uuidv4();
         await createFeedback({
           id: feedbackId,
           ...input,
-          userId: ctx.user.id,
+          userId: "anonymous",
         });
 
         return {
@@ -230,7 +243,7 @@ JSONのみを出力してください。
           policyImportanceScore: input.policyImportanceScore,
           overallScore: input.overallScore,
           comment: input.comment,
-          userId: ctx.user.id,
+          userId: "anonymous",
           createdAt: new Date(),
         };
       }),
@@ -252,21 +265,21 @@ JSONのみを出力してください。
     /**
      * ディスカッションコメントを投稿
      */
-    create: protectedProcedure
+    create: publicProcedure
       .input(DiscussionSchema)
-      .mutation(async ({ ctx, input }) => {
+      .mutation(async ({ input }) => {
         const discussionId = uuidv4();
         await createDiscussion({
           id: discussionId,
           ...input,
-          userId: ctx.user.id,
+          userId: "anonymous",
         });
 
         return {
           id: discussionId,
           hypothesisId: input.hypothesisId,
           content: input.content,
-          userId: ctx.user.id,
+          userId: "anonymous",
           createdAt: new Date(),
         };
       }),
