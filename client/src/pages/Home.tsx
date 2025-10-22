@@ -193,8 +193,8 @@ export default function Home() {
             <div>
               <h4 className="font-semibold mb-4">製品</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/dashboard"><a className="hover:text-foreground transition-colors">ダッシュボード</a></Link></li>
-                <li><Link href="/explore"><a className="hover:text-foreground transition-colors">仮説一覧</a></Link></li>
+                <li><Link href="/dashboard" className="hover:text-foreground transition-colors">ダッシュボード</Link></li>
+                <li><Link href="/explore" className="hover:text-foreground transition-colors">仮説一覧</Link></li>
               </ul>
             </div>
             <div>
