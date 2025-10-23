@@ -19,17 +19,14 @@ export default function Dashboard() {
     return null;
   }
 
-  // ユーザーの仮説一覧を取得
-  const { data: hypotheses, isLoading, refetch } = trpc.hypothesis.listByUser.useQuery();
+  const { data: hypotheses, isLoading } = trpc.hypothesis.listAll.useQuery();
 
-  // 仮説生成ミューテーション
   const generateMutation = trpc.hypothesis.generate.useMutation({
-    onSuccess: (data) => {
-      setIsGenerating(false);
-      refetch();
+    onSuccess: () => {
+      trpc.useUtils().hypothesis.listAll.invalidate();
+      setShowKeywordDialog(false);
     },
     onError: (error) => {
-      setIsGenerating(false);
       console.error("Generation error:", error);
     },
   });
@@ -51,9 +48,6 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2">ダッシュボード</h1>
-              <p className="text-muted-foreground">
-                ようこそ、{user?.name || "ユーザー"}さん
-              </p>
             </div>
             <Button
               size="lg"
@@ -99,12 +93,15 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 平均信頼度
               </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                仮説の実現可能性の指標(70-95)
+              </p>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
                 {hypotheses && hypotheses.length > 0
                   ? Math.round(
-                      hypotheses.reduce((sum, h) => sum + h.confidence, 0) /
+                      hypotheses.reduce((sum: number, h: any) => sum + h.confidence, 0) /
                         hypotheses.length
                     )
                   : 0}
@@ -118,18 +115,31 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 平均新規性スコア
               </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                仮説の新しさを示す指標(70-95)
+              </p>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
                 {hypotheses && hypotheses.length > 0
                   ? Math.round(
-                      hypotheses.reduce((sum, h) => sum + h.noveltyScore, 0) /
+                      hypotheses.reduce((sum: number, h: any) => sum + h.noveltyScore, 0) /
                         hypotheses.length
                     )
                   : 0}
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* 実現可能性スコアの説明 */}
+        <div className="mb-8 p-4 bg-muted/50 rounded-lg border border-border">
+          <h3 className="text-sm font-semibold mb-3">スコアについて</h3>
+          <ul className="text-sm text-muted-foreground space-y-2">
+            <li><strong>信頼度</strong>：仮説の理論的妥当性を示す指標(70-95)</li>
+            <li><strong>新規性スコア</strong>：仮説の新しさを示す指標(70-95)</li>
+            <li><strong>実現可能性スコア</strong>：仮説を実現できる可能性を示す指標(65-95)</li>
+          </ul>
         </div>
 
         {/* 仮説リスト */}
@@ -142,7 +152,7 @@ export default function Dashboard() {
             </div>
           ) : hypotheses && hypotheses.length > 0 ? (
             <div className="grid gap-6">
-              {hypotheses.map((hypothesis) => (
+              {hypotheses.map((hypothesis: any) => (
                 <Card
                   key={hypothesis.id}
                   className="cursor-pointer hover:border-primary/50 transition-colors"
@@ -181,7 +191,7 @@ export default function Dashboard() {
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Plus className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
-                  まだ仮説がありません
+                  仮説がまだありません
                 </h3>
                 <p className="text-muted-foreground text-center mb-6 max-w-sm">
                   「新しい仮説を生成」ボタンをクリックして、
@@ -209,4 +219,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
 

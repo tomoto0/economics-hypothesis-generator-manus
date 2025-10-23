@@ -30,14 +30,9 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  {user?.name || "ユーザー"}
-                </span>
-                <Link href="/dashboard">
-                  <Button variant="default">ダッシュボード</Button>
-                </Link>
-              </>
+              <Link href="/dashboard">
+                <Button variant="default">ダッシュボード</Button>
+              </Link>
             ) : (
               <a href={getLoginUrl()}>
                 <Button variant="default">ログイン</Button>

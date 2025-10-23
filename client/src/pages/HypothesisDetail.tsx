@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import ReactMarkdown from "react-markdown";
 
 export default function HypothesisDetail() {
   const [, setLocation] = useLocation();
@@ -212,9 +213,25 @@ export default function HypothesisDetail() {
                 <CardTitle className="text-lg">AI分析コメント</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground whitespace-pre-wrap">
-                  {hypothesis.aiComment}
-                </p>
+                <div className="text-muted-foreground prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2" {...props} />,
+                      h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2" {...props} />,
+                      h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2 mb-1" {...props} />,
+                      p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                      ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2" {...props} />,
+                      ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2" {...props} />,
+                      li: ({node, ...props}) => <li className="ml-2" {...props} />,
+                      strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                      em: ({node, ...props}) => <em className="italic" {...props} />,
+                      code: ({node, ...props}) => <code className="bg-muted px-1 rounded text-xs" {...props} />,
+                      blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-2" {...props} />,
+                    }}
+                  >
+                    {hypothesis.aiComment}
+                  </ReactMarkdown>
+                </div>
               </CardContent>
             </Card>
           )}
