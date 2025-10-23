@@ -20,10 +20,11 @@ export default function Dashboard() {
   }
 
   const { data: hypotheses, isLoading } = trpc.hypothesis.listAll.useQuery();
+  const utils = trpc.useUtils();
 
   const generateMutation = trpc.hypothesis.generate.useMutation({
     onSuccess: () => {
-      trpc.useUtils().hypothesis.listAll.invalidate();
+      utils.hypothesis.listAll.invalidate();
       setShowKeywordDialog(false);
     },
     onError: (error) => {
